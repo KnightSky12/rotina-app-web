@@ -314,6 +314,24 @@ export default function Home() {
     }
   };
 
+  const handleContinueRecent = (task: RecentTask, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isRunning) return;
+    
+    setTaskName(task.name);
+    setSelectedTag(task.tagId);
+    
+    // Auto-start a new session as 'fluxo' with this data
+    setActiveTimer('fluxo');
+    
+    // Increment specific task duration by pushing a new duplicate start logic
+    // But since it exists, toggleTimer logic will just match it and bump it!
+    
+    lastTickRef.current = Date.now();
+    setIsRunning(true);
+    setActiveTab('timer');
+  };
+
   const handleSelectRecent = (task: RecentTask) => {
     if (isRunning) return; // Prevent changing task while running
     setTaskName(task.name);
@@ -567,6 +585,14 @@ export default function Home() {
                            {/* Hover State: Actions */}
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute right-4 bg-[#16161a] pl-2 z-10">
                               <button 
+                                onClick={(e) => handleContinueRecent(task, e)}
+                                className="p-1.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-colors flex items-center gap-1"
+                                title="Continuar Foco"
+                              >
+                                <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </button>
+                              <div className="w-px h-4 bg-gray-800 mx-1"></div>
+                              <button 
                                 onClick={(e) => handleMoveTask(task.id, 'up', e)}
                                 disabled={index === 0}
                                 className="p-1.5 text-gray-500 hover:text-gray-200 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
@@ -638,9 +664,10 @@ export default function Home() {
                           itemStyle={{ color: '#e4e4e7' }}
                           formatter={(value: unknown) => {
                             const numValue = Number(value);
+                            if (numValue < 60) return [`${Math.floor(numValue)}s`, 'Tempo'];
                             const h = Math.floor(numValue / 3600);
                             const m = Math.floor((numValue % 3600) / 60);
-                            return [`${h}h ${m}m`, 'Tempo'];
+                            return h > 0 ? [`${h}h ${m}m`, 'Tempo'] : [`${m}m`, 'Tempo'];
                           }}
                         />
                       </PieChart>
@@ -685,12 +712,17 @@ export default function Home() {
                 <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-6 w-full text-left">Timeline de Foco</h3>
                 <div className="w-full h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={formattedTimelineData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                      <BarChart data={formattedTimelineData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                       <XAxis dataKey="time" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}m`} />
+                      <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => val < 1 ? '<1m' : `${Math.floor(val)}m`} />
                       <Tooltip 
                           cursor={{fill: '#1a1a20'}}
                           contentStyle={{ backgroundColor: '#1a1a20', borderColor: '#27272a', borderRadius: '1rem', color: '#fff', fontSize: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                          formatter={(value: any, name: any) => {
+                             const numVal = Number(value);
+                             if (numVal < 1) return [`${Math.floor(numVal * 60)}s`, name];
+                             return [`${Math.floor(numVal)}m`, name];
+                          }}
                         />
                       <Bar dataKey="Trabalho" stackId="a" fill={TAGS[0].hex} radius={[0, 0, 4, 4]} maxBarSize={30} />
                       <Bar dataKey="Faculdade" stackId="a" fill={TAGS[1].hex} maxBarSize={30} />
