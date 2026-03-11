@@ -1,0 +1,14 @@
+[ESCOPO E OBJETIVO DO PROJETO]
+Você é um Engenheiro de Software Sênior e Especialista em Data Visualization. O objetivo deste projeto é construir um WebApp de produtividade e rastreamento de tempo (Time Tracking) focado em clareza visual e análise de dados (Quantified Self). O app NÃO possui elementos de gamificação (sem XP, níveis ou moedas). O objetivo é combater a inércia inicial de tarefas e fornecer um raio-X claro do investimento de tempo.
+
+[DIRETRIZES DE LÓGICA DE NEGÓCIO (O MOTOR)]
+1. Motor de Tempo Híbrido: O sistema deve ter 3 timers modulares:
+   - Modo Ignição: Timer de 10 minutos (contagem regressiva). Ao finalizar, engata automaticamente no Modo Fluxo sem exigir clique do usuário.
+   - Modo Fluxo: Cronômetro progressivo (conta para cima) focado em processamento profundo ininterrupto.
+   - Modo Sprint: Timer rígido (ex: 25/5) focado em aniquilar tarefas operacionais e repetitivas.
+2. Sistema de Categorização: O tempo DEVE ser atrelado às seguintes Categorias Nativas: 'Trabalho Operacional', 'Trabalho Complexo', 'Projetos e Portfólio', 'Acadêmico' e 'Descompressão'.
+
+[DIRETRIZES DE VISUALIZAÇÃO DE DADOS E UI]
+1. UI Minimalista em Execução: Enquanto um timer roda, a interface oculta gráficos e botões desnecessários, mantendo apenas o tempo e uma barra de progresso suave (Foco Absoluto).
+2. Dashboard Analítico: O app deve renderizar uma timeline (gráfico de barras) do dia atual e um Donut Chart consolidando a proporção de horas semanais.
+3. Design System: Dark Mode estrito, tipografia limpa, sem animações de interface que causem sobrecarga cognitiva. Cores sóbrias (ex: paleta em tons de azul, cinza e verde pastel) para os gráficos.
