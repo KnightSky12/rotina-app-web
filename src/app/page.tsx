@@ -757,7 +757,7 @@ export default function Home() {
                   <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={formattedTimelineData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                       <XAxis dataKey="time" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => val < 1 ? '<1m' : `${Math.floor(val)}m`} />
+                      <YAxis allowDecimals={false} stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}m`} />
                       <Tooltip 
                           cursor={{fill: '#1a1a20'}}
                           contentStyle={{ backgroundColor: '#1a1a20', borderColor: '#27272a', borderRadius: '1rem', color: '#fff', fontSize: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
@@ -795,7 +795,7 @@ export default function Home() {
                  <ResponsiveContainer width="100%" height="100%">
                    <BarChart data={weeklyHistory} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                      <XAxis dataKey="date" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                     <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}h`} />
+                     <YAxis allowDecimals={false} stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}h`} />
                      <Tooltip 
                         cursor={{fill: '#1a1a20'}}
                         contentStyle={{ backgroundColor: '#1a1a20', borderColor: '#27272a', borderRadius: '1rem', color: '#fff', fontSize: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
