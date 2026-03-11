@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '@/lib/auth-context';
 import { AuthScreen } from '@/components/auth/AuthScreen';
@@ -45,6 +45,9 @@ export default function Home() {
   const [dailyTotal, setDailyTotal] = useState(0);
   const [timelineLogs, setTimelineLogs] = useState<TimelineLog[]>([]);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyLog[]>([]);
+  
+  // Mathematical Delta marker for background timer tracking
+  const lastTickRef = useRef<number>(0);
 
   useEffect(() => {
     setIsMounted(true);
@@ -178,63 +181,70 @@ export default function Home() {
 
   // Remove the useEffect that auto-reset time. Handled by activeTimer manually now.
 
-  // Timer interval logic: Real-time accumulation
+  // Timer interval logic: Real-time accumulation with OS Background-Proof Deltas
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isRunning) {
       interval = setInterval(() => {
-        // Handle Countdown/Stopwatch display
-        setTimeInSeconds((prev) => {
-          if (activeTimer === 'fluxo') {
-            return prev + 1;
-          } else {
-            if (prev <= 1) {
-              setIsRunning(false);
-              return 0; // timer finished
-            }
-            return prev - 1;
-          }
-        });
+        const nowMs = Date.now();
+        const deltaSec = Math.floor((nowMs - lastTickRef.current) / 1000);
         
-        setDailyTotal((prev) => prev + 1); // accumulate daily focus time
-        
-        // Add 1 second to the specific active task
-        setRecentTasks(prevTasks => {
-           return prevTasks.map(t => {
-             if (t.name === taskName && t.tagId === selectedTag) {
-               return { ...t, duration: t.duration + 1 };
+        if (deltaSec > 0) {
+           lastTickRef.current += deltaSec * 1000; // Advancing the tick checkpoint
+
+           // Handle Countdown/Stopwatch display
+           setTimeInSeconds((prev) => {
+             if (activeTimer === 'fluxo') {
+               return prev + deltaSec;
+             } else {
+               if (prev - deltaSec <= 0) {
+                 setIsRunning(false);
+                 return 0; // timer finished
+               }
+               return prev - deltaSec;
              }
-             return t;
            });
-        });
+           
+           setDailyTotal((prev) => prev + deltaSec); // accumulate daily focus time
+           
+           // Add delta seconds to the specific active task
+           setRecentTasks(prevTasks => {
+              return prevTasks.map(t => {
+                if (t.name === taskName && t.tagId === selectedTag) {
+                  return { ...t, duration: t.duration + deltaSec };
+                }
+                return t;
+              });
+           });
 
-        // Add 1 second (1/60th minute) to current Timeline Hour
-        setTimelineLogs(prevLogs => {
-           const now = new Date();
-           const currentHourStr = `${now.getHours().toString().padStart(2, '0')}:00`;
-           
-           const existingHourIdx = prevLogs.findIndex(log => log.time === currentHourStr);
-           const updatedLogs = [...prevLogs];
-           
-           if (existingHourIdx >= 0) {
-              const currentMinutes = (updatedLogs[existingHourIdx][selectedTag] as number) || 0;
-              updatedLogs[existingHourIdx] = {
-                 ...updatedLogs[existingHourIdx],
-                 [selectedTag]: currentMinutes + (1/60)
-              };
-           } else {
-              // Create new hour block
-              const newLog: TimelineLog = { time: currentHourStr };
-              TAGS.forEach(t => newLog[t.id] = 0);
-              newLog[selectedTag] = (1/60);
-              updatedLogs.push(newLog);
-           }
-           
-           // Sort strictly so the chart flows from morning to night
-           return updatedLogs.sort((a, b) => a.time.localeCompare(b.time));
-        });
-
-      }, 1000);
+           // Add delta seconds (as minutes) to current Timeline Hour
+           setTimelineLogs(prevLogs => {
+              const now = new Date();
+              const currentHourStr = `${now.getHours().toString().padStart(2, '0')}:00`;
+              
+              const existingHourIdx = prevLogs.findIndex(log => log.time === currentHourStr);
+              const updatedLogs = [...prevLogs];
+              const deltaMinutes = deltaSec / 60;
+              
+              if (existingHourIdx >= 0) {
+                 const currentMinutes = (updatedLogs[existingHourIdx][selectedTag] as number) || 0;
+                 updatedLogs[existingHourIdx] = {
+                    ...updatedLogs[existingHourIdx],
+                    [selectedTag]: currentMinutes + deltaMinutes
+                 };
+              } else {
+                 // Create new hour block
+                 const newLog: TimelineLog = { time: currentHourStr };
+                 TAGS.forEach(t => newLog[t.id] = 0);
+                 newLog[selectedTag] = deltaMinutes;
+                 updatedLogs.push(newLog);
+              }
+              
+              // Sort strictly so the chart flows from morning to night
+              return updatedLogs.sort((a, b) => a.time.localeCompare(b.time));
+           });
+        }
+      }, 500); // Check twice a second for precision
     } else {
       // Sync to cloud when the timer explicitly stops (or clears via countdown)
       if (isMounted && timeInSeconds > 0) {
@@ -270,6 +280,9 @@ export default function Home() {
       if (!exists) {
         setRecentTasks([{ id: Date.now().toString(), name: taskName, tagId: selectedTag, duration: 0 }, ...recentTasks].slice(0, 10));
       }
+      
+      lastTickRef.current = Date.now(); // SET INITIAL BACKGROUND-PROOF TIMESTAMP CHECKPOINT
+      
       setIsRunning(true);
       setActiveTab('timer'); // Force view map to timer
     }
