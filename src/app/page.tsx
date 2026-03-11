@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useAuth } from '@/lib/auth-context';
+import { AuthScreen } from '@/components/auth/AuthScreen';
+import { supabase } from '@/lib/supabase';
 
 const TAGS = [
   { id: 'trabalho', label: 'Trabalho', color: 'bg-indigo-500', hex: '#6366f1', textClass: 'text-indigo-400', borderClass: 'border-indigo-500/20', activeBorder: 'border-indigo-500/50', bgClass: 'bg-indigo-500/10' },
@@ -23,6 +26,7 @@ interface TimelineLog {
 }
 
 export default function Home() {
+  const { user, loading: authLoading, signOut } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'timer' | 'dashboard'>('timer');
   const [taskName, setTaskName] = useState("");
@@ -38,42 +42,97 @@ export default function Home() {
 
   // Hydrate data from the user's browser (Local Storage) on first load
   useEffect(() => {
-    const today = new Date().toDateString();
+    if (!user) return; // Wait for Auth loading
+    const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
     
-    const storedDate = localStorage.getItem('rotina_lastDate');
-    const storedTasks = localStorage.getItem('rotina_recentTasks');
-    const storedTotal = localStorage.getItem('rotina_dailyTotal');
-    const storedLogs = localStorage.getItem('rotina_timelineLogs');
+    const fetchSupabaseData = async () => {
+      // 1. Fetch Daily Tasks for today
+      const { data: tasksData, error: taskErr } = await supabase
+        .from('daily_tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', todayStr);
 
-    let parsedTasks: RecentTask[] = storedTasks ? JSON.parse(storedTasks) : [];
+      if (!taskErr && tasksData) {
+        let total = 0;
+        const mappedTasks = tasksData.map((dbTask) => {
+          total += dbTask.duration;
+          return {
+            id: dbTask.id,
+            name: dbTask.name,
+            tagId: dbTask.tag_id,
+            duration: dbTask.duration,
+          };
+        });
+        setRecentTasks(mappedTasks);
+        setDailyTotal(total);
+      }
 
-    // Is it still the same day?
-    if (storedDate === today) {
-      if (storedTotal) setDailyTotal(Number(storedTotal));
-      if (storedLogs) setTimelineLogs(JSON.parse(storedLogs));
-      setRecentTasks(parsedTasks);
-    } else {
-      // It's a new day: preserve the task labels but zero out the daily durations so you start fresh
-      parsedTasks = parsedTasks.map((t) => ({ ...t, duration: 0 }));
-      setRecentTasks(parsedTasks);
-      setDailyTotal(0);
-      setTimelineLogs([]);
-      localStorage.setItem('rotina_lastDate', today);
-    }
+      // 2. Fetch Hourly Timeline Logs for today
+      const { data: logsData, error: logErr } = await supabase
+        .from('hourly_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', todayStr);
+
+      if (!logErr && logsData) {
+        // Group the linear timeline rows back into the TimelineLog Recharts array
+        const groupedLogs: Record<string, TimelineLog> = {};
+        
+        logsData.forEach((row) => {
+          if (!groupedLogs[row.hour_str]) {
+            // Initiate blank hour block
+            const newLog: TimelineLog = { time: row.hour_str };
+            TAGS.forEach(t => newLog[t.id] = 0);
+            groupedLogs[row.hour_str] = newLog;
+          }
+          groupedLogs[row.hour_str][row.tag_id] = Number(row.duration_minutes);
+        });
+
+        const sortedArray = Object.values(groupedLogs).sort((a, b) => a.time.localeCompare(b.time));
+        setTimelineLogs(sortedArray);
+      }
+      setIsMounted(true);
+    };
+
+    fetchSupabaseData();
+  }, [user]);
+
+  // Sync data to Supabase specifically when user stops/starts or interval completes
+  // to avoid spamming the DB every single second
+  const syncToSupabaseLocalCache = async () => {
+    if (!user) return;
+    const todayStr = new Date().toISOString().split('T')[0];
     
-    setIsMounted(true);
-  }, []);
+    const currentTask = recentTasks.find(t => t.name === taskName && t.tagId === selectedTag);
+    if (!currentTask) return; // Don't sync if no task is active
+    
+    // Upsert the specific Task line
+    await supabase.from('daily_tasks').upsert({
+       user_id: user.id,
+       date: todayStr,
+       name: taskName,
+       tag_id: selectedTag,
+       duration: currentTask.duration
+    }, { onConflict: 'user_id, date, name, tag_id' });
 
-  // Persist any time changes into Local Storage actively behind the scenes
-  useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem('rotina_recentTasks', JSON.stringify(recentTasks));
-      localStorage.setItem('rotina_dailyTotal', dailyTotal.toString());
-      localStorage.setItem('rotina_timelineLogs', JSON.stringify(timelineLogs));
+    // Upsert the specific Timeline Hour line
+    const now = new Date();
+    const currentHourStr = `${now.getHours().toString().padStart(2, '0')}:00`;
+    const hourLog = timelineLogs.find(log => log.time === currentHourStr);
+    
+    if (hourLog) {
+      await supabase.from('hourly_logs').upsert({
+         user_id: user.id,
+         date: todayStr,
+         hour_str: currentHourStr,
+         tag_id: selectedTag,
+         duration_minutes: Number(hourLog[selectedTag]) || 0
+      }, { onConflict: 'user_id, date, hour_str, tag_id' });
     }
-  }, [recentTasks, dailyTotal, timelineLogs, isMounted]);
+  };
 
-  // Remove the useEffect that auto-switched tabs. Instead, handle the switch below in toggleTimer.
+  // Deprecated Local Storage side-effect syncing
 
   // Remove the useEffect that auto-reset time. Handled by activeTimer manually now.
 
@@ -134,9 +193,18 @@ export default function Home() {
         });
 
       }, 1000);
+    } else {
+      // Sync to cloud when the timer explicitly stops (or clears via countdown)
+      if (isMounted && timeInSeconds > 0) {
+        syncToSupabaseLocalCache();
+      }
     }
-    return () => clearInterval(interval);
-  }, [isRunning, activeTimer, taskName, selectedTag]);
+    
+    // Also sync if the component unmounts mid-timer to save progress
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isRunning, activeTimer, taskName, selectedTag, timeInSeconds, isMounted, syncToSupabaseLocalCache]);
 
   const handleTimerChange = (timerId: string) => {
     if (isRunning) return;
@@ -214,7 +282,9 @@ export default function Home() {
 
   // Prevents Next.js Server-Side Hydration mismatches while loading the cached data
   // Must be placed after all React Hooks (useState/useEffect) to avoid violations
-  if (!isMounted) return <div className="min-h-screen bg-[#09090b]"></div>;
+  if (!isMounted || authLoading) return <div className="min-h-screen bg-[#09090b]"></div>;
+
+  if (!user) return <AuthScreen />;
 
   // --- Dashboard Data Preparation ---
   // Live grouping for Donut Chart
@@ -239,7 +309,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#09090b] text-gray-200 flex flex-col items-center py-10 px-6 font-sans selection:bg-gray-800">
       
       {/* Top Navigation Tabs (Hidden when running) */}
-      <div className={`w-full max-w-md flex justify-center mb-8 transition-opacity duration-500 ${isRunning ? 'opacity-0 pointer-events-none h-0 mb-0 overflow-hidden' : 'opacity-100'}`}>
+      <div className={`w-full max-w-md flex justify-between items-center mb-8 transition-opacity duration-500 ${isRunning ? 'opacity-0 pointer-events-none h-0 mb-0 overflow-hidden' : 'opacity-100'}`}>
         <div className="flex bg-[#121216]/80 p-1.5 rounded-2xl border border-white/[0.04]">
            <button 
              onClick={() => setActiveTab('timer')}
@@ -254,6 +324,12 @@ export default function Home() {
              Dashboard
            </button>
         </div>
+        <button 
+          onClick={signOut}
+          className="px-4 py-2 rounded-xl text-xs font-semibold text-red-500/70 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+        >
+          Sair
+        </button>
       </div>
 
       {activeTab === 'timer' ? (
