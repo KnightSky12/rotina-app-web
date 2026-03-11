@@ -18,6 +18,7 @@ interface RecentTask {
   name: string;
   tagId: string;
   duration: number; // in seconds
+  type?: string;    // "fluxo" | "ignicao" | "sprint"
 }
 
 interface TimelineLog {
@@ -304,7 +305,7 @@ export default function Home() {
       
       const exists = recentTasks.find((t) => t.name === taskName && t.tagId === selectedTag);
       if (!exists) {
-        setRecentTasks([{ id: Date.now().toString(), name: taskName, tagId: selectedTag, duration: 0 }, ...recentTasks].slice(0, 10));
+        setRecentTasks([{ id: Date.now().toString(), name: taskName, tagId: selectedTag, duration: 0, type: activeTimer }, ...recentTasks].slice(0, 10));
       }
       
       lastTickRef.current = Date.now(); // SET INITIAL BACKGROUND-PROOF TIMESTAMP CHECKPOINT
@@ -584,14 +585,19 @@ export default function Home() {
 
                            {/* Hover State: Actions */}
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute right-4 bg-[#16161a] pl-2 z-10">
-                              <button 
-                                onClick={(e) => handleContinueRecent(task, e)}
-                                className="p-1.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-colors flex items-center gap-1"
-                                title="Continuar Foco"
-                              >
-                                <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                              </button>
-                              <div className="w-px h-4 bg-gray-800 mx-1"></div>
+                              {/* Only show Continue button if it was a free-flowing timer */}
+                              {(!task.type || task.type === 'fluxo') && (
+                                <>
+                                  <button 
+                                    onClick={(e) => handleContinueRecent(task, e)}
+                                    className="p-1.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-colors flex items-center gap-1"
+                                    title="Continuar Foco"
+                                  >
+                                    <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                  </button>
+                                  <div className="w-px h-4 bg-gray-800 mx-1"></div>
+                                </>
+                              )}
                               <button 
                                 onClick={(e) => handleMoveTask(task.id, 'up', e)}
                                 disabled={index === 0}
