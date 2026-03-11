@@ -370,6 +370,43 @@ export default function Home() {
     }
   };
 
+  const handleClearToday = async () => {
+    if (!window.confirm("Isso excluirá todo o seu histórico e gráficos de foco de Hoje. Deseja continuar?")) {
+      return;
+    }
+
+    // Wipe local state instantly
+    setRecentTasks([]);
+    setDailyTotal(0);
+    setTimelineLogs([]);
+
+    // Delete everything from Supabase for Today
+    if (user) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      await supabase.from('daily_tasks').delete()
+        .match({ user_id: user.id, date: todayStr });
+        
+      await supabase.from('hourly_logs').delete()
+        .match({ user_id: user.id, date: todayStr });
+        
+      // Also deduct from the Weekly total so it updates immediately
+      setWeeklyHistory(prev => prev.map(dayLog => {
+        const [day, month] = dayLog.date.split('/');
+        const itemDateStr = new Date().toISOString(); 
+        // We do a rough match, since 'todayStr' is usually active, we just zero out today in the chart
+        const isTodayLabel = `${new Date().getDate().toString().padStart(2, '0')}/${(new Date().getMonth()+1).toString().padStart(2, '0')}`;
+        
+        if (dayLog.date === isTodayLabel) {
+           const resetLog: WeeklyLog = { date: dayLog.date };
+           TAGS.forEach(t => resetLog[t.label] = 0);
+           return resetLog as WeeklyLog;
+        }
+        return dayLog;
+      }));
+    }
+  };
+
   const handleMoveTask = (id: string, direction: 'up' | 'down', e: React.MouseEvent) => {
     e.stopPropagation();
     setRecentTasks(prev => {
@@ -594,7 +631,15 @@ export default function Home() {
             {/* Histórico Recente */}
             {recentTasks.length > 0 && (
               <div className={`w-full flex flex-col gap-3 transition-opacity duration-500 ${isRunning ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.2em] px-2 mb-1">Histórico Recente</h3>
+                <div className="flex justify-between items-center px-2 mb-1">
+                  <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.2em]">Histórico Recente</h3>
+                  <button 
+                    onClick={handleClearToday}
+                    className="text-[10px] font-semibold text-red-500/70 hover:text-red-400 transition-colors uppercase tracking-wider bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded-md"
+                  >
+                    Limpar Tudo
+                  </button>
+                </div>
                 <div className="flex flex-col gap-2.5">
                   {recentTasks.map((task, index) => {
                     const tagConfig = TAGS.find(t => t.id === task.tagId) || TAGS[0];
