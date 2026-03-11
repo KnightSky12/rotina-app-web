@@ -348,7 +348,7 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-gray-200 flex flex-col items-center py-10 px-6 font-sans selection:bg-gray-800">
+    <div className="min-h-screen bg-[#09090b] text-gray-200 flex flex-col items-center py-6 px-4 md:py-10 md:px-6 font-sans selection:bg-gray-800">
       
       {/* Top Navigation Tabs (Hidden when running) */}
       <div className={`w-full max-w-md flex justify-between items-center mb-8 transition-opacity duration-500 ${isRunning ? 'opacity-0 pointer-events-none h-0 mb-0 overflow-hidden' : 'opacity-100'}`}>
@@ -383,10 +383,10 @@ export default function Home() {
       {activeTab === 'timer' ? (
         <>
           {/* Header */}
-          <header className={`w-full max-w-2xl mb-10 flex flex-col items-center transition-all duration-500 ${isRunning ? 'mt-12 scale-105' : 'mt-0'}`}>
+          <header className={`w-full max-w-2xl mb-8 md:mb-10 flex flex-col items-center transition-all duration-500 ${isRunning ? 'mt-8 md:mt-12 scale-105' : 'mt-0'}`}>
             <h1 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.25em] mb-4">Visão Geral</h1>
-            <p className="text-4xl font-light text-gray-100 flex items-baseline gap-2 tabular-nums">
-              {dailyFormatted.h}h {dailyFormatted.m}m <span className="text-base font-normal text-gray-500 tracking-wide">focados hoje</span>
+            <p className="text-3xl md:text-4xl font-light text-gray-100 flex items-baseline gap-2 tabular-nums">
+              {dailyFormatted.h}h {dailyFormatted.m}m <span className="text-sm md:text-base font-normal text-gray-500 tracking-wide">focados hoje</span>
             </p>
           </header>
 
@@ -424,7 +424,7 @@ export default function Home() {
               </div>
 
               {/* Time Display */}
-              <div className={`text-[6.5rem] leading-none font-extralight tabular-nums tracking-tighter py-4 flex justify-center drop-shadow-md transition-colors duration-300 ${isRunning ? 'text-white' : 'text-white/90'}`}>
+              <div className={`text-[5rem] md:text-[6.5rem] leading-none font-extralight tabular-nums tracking-tighter py-4 flex justify-center drop-shadow-md transition-colors duration-300 ${isRunning ? 'text-white' : 'text-white/90'}`}>
                 {formatTimeBig(timeInSeconds)}
               </div>
               
@@ -546,9 +546,9 @@ export default function Home() {
         /* Dashboard View */
         <main className="w-full max-w-md flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
            {/* Dash Header */}
-           <header className="w-full mb-10 mt-2 flex flex-col items-center">
+           <header className="w-full mb-8 md:mb-10 mt-2 flex flex-col items-center">
             <h1 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.25em] mb-4">Total Focado Hoje</h1>
-            <p className="text-5xl font-light text-white flex items-baseline gap-2 tabular-nums">
+            <p className="text-4xl md:text-5xl font-light text-white flex items-baseline gap-2 tabular-nums">
               {dailyFormatted.h}h {dailyFormatted.m}m
             </p>
           </header>
@@ -648,9 +648,9 @@ export default function Home() {
       ) : (
         /* Histórico View */
         <main className="w-full max-w-md flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-          <header className="w-full mb-10 mt-2 flex flex-col items-center">
+          <header className="w-full mb-8 md:mb-10 mt-2 flex flex-col items-center">
              <h1 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.25em] mb-4">Progresso Semanal</h1>
-             <p className="text-3xl font-light text-white flex items-baseline gap-2 tabular-nums">
+             <p className="text-2xl md:text-3xl font-light text-white flex items-baseline gap-2 tabular-nums">
                Últimos 7 dias
              </p>
           </header>

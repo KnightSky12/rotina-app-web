@@ -46,8 +46,22 @@ export function AuthScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center py-10 px-6 font-sans selection:bg-gray-800">
-      <div className="w-full max-w-sm bg-[#121216]/80 p-8 rounded-3xl border border-white/[0.04] shadow-2xl flex flex-col items-center">
+    <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center py-6 px-4 md:py-10 md:px-6 font-sans selection:bg-gray-800">
+      
+      {/* Mobile Install App Banner */}
+      <div className="block md:hidden w-full max-w-sm mb-6 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 text-center">
+         <div className="flex items-center justify-center gap-3 mb-2">
+           <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+           </svg>
+           <span className="text-sm font-bold text-indigo-300">Instale o RotinaApp</span>
+         </div>
+         <p className="text-xs text-indigo-200/70">
+           Para usar em tela cheia, toque em <strong>Compartilhar</strong> no Safari ou no menu do Chrome e escolha <strong>Adicionar à Tela de Início</strong>.
+         </p>
+      </div>
+
+      <div className="w-full max-w-sm bg-[#121216]/80 p-6 md:p-8 rounded-3xl border border-white/[0.04] shadow-2xl flex flex-col items-center">
         
         {/* Placeholder Logo / Header */}
         <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-6 border border-indigo-500/30">
