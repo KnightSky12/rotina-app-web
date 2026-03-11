@@ -143,6 +143,22 @@ export default function Home() {
     fetchSupabaseData();
   }, [user]);
 
+  // Tab Title Synchronization
+  useEffect(() => {
+    if (isRunning) {
+      const h = Math.floor(timeInSeconds / 3600);
+      const m = Math.floor((timeInSeconds % 3600) / 60);
+      const s = timeInSeconds % 60;
+      const formatted = h > 0 
+        ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+        : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      
+      document.title = `[${formatted}] ${taskName} - RotinaApp`;
+    } else {
+      document.title = 'RotinaApp: Motor de Foco';
+    }
+  }, [timeInSeconds, isRunning, taskName]);
+
   // Sync data to Supabase specifically when user stops/starts or interval completes
   // to avoid spamming the DB every single second
   const syncToSupabaseLocalCache = async () => {
@@ -199,6 +215,9 @@ export default function Home() {
              } else {
                if (prev - deltaSec <= 0) {
                  setIsRunning(false);
+                 if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+                   navigator.vibrate([200, 100, 200, 100, 400]); // Victory heartbeat pattern
+                 }
                  return 0; // timer finished
                }
                return prev - deltaSec;
@@ -268,6 +287,13 @@ export default function Home() {
 
   const toggleTimer = () => {
     if (isRunning) {
+      // Anti-misclick protection
+      if (activeTimer !== 'fluxo' && timeInSeconds > 0) {
+        if (!window.confirm("Você tem certeza que deseja interromper este Foco antes do fim?")) {
+          return;
+        }
+      }
+
       setIsRunning(false);
       // Reset timer automatically on stop
       if (activeTimer === 'ignicao') setTimeInSeconds(10 * 60);
