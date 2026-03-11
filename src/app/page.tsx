@@ -39,6 +39,7 @@ export default function Home() {
   const [selectedTag, setSelectedTag] = useState(TAGS[0].id);
   const [activeTimer, setActiveTimer] = useState<string>('fluxo');
   const [isRunning, setIsRunning] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
   
   // App state
   const [recentTasks, setRecentTasks] = useState<RecentTask[]>([]);
@@ -142,6 +143,12 @@ export default function Home() {
     };
 
     fetchSupabaseData();
+    
+    // Check Intro Tour status
+    const hasSeenIntro = localStorage.getItem('hasSeenRotinaAppIntro');
+    if (!hasSeenIntro) {
+      setShowIntro(true);
+    }
   }, [user]);
 
   // Tab Title Synchronization
@@ -427,6 +434,36 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#09090b] text-gray-200 flex flex-col items-center py-6 px-4 md:py-10 md:px-6 font-sans selection:bg-gray-800">
       
+      {/* Intro Modal Overlay */}
+      {showIntro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-500">
+           <div className="w-full max-w-sm bg-[#121216] border border-indigo-500/30 p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-500 delay-150">
+             <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center mb-6">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+             </div>
+             <h2 className="text-xl font-bold text-white mb-3">Bem-vindo ao RotinaApp</h2>
+             <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+               Este é o seu novo motor de foco. <br/><br/>
+               👉 Escolha uma tarefa e uma cor.<br/>
+               👉 Selecione um motor (Fluxo, Sprint ou Ignição).<br/>
+               👉 Aperte o Play e deixe a tela aberta.<br/><br/>
+               Todo o seu tempo será guardado no seu Painel Dashboard automaticamente.
+             </p>
+             <button 
+               onClick={() => {
+                 localStorage.setItem('hasSeenRotinaAppIntro', 'true');
+                 setShowIntro(false);
+               }}
+               className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-colors"
+             >
+               Começar a Focar
+             </button>
+           </div>
+        </div>
+      )}
+
       {/* Top Navigation Tabs (Hidden when running) */}
       <div className={`w-full max-w-md flex justify-between items-center mb-8 transition-opacity duration-500 ${isRunning ? 'opacity-0 pointer-events-none h-0 mb-0 overflow-hidden' : 'opacity-100'}`}>
         <div className="flex bg-[#121216]/80 p-1.5 rounded-2xl border border-white/[0.04]">
