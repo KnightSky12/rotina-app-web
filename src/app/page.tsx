@@ -40,6 +40,10 @@ export default function Home() {
   const [dailyTotal, setDailyTotal] = useState(0);
   const [timelineLogs, setTimelineLogs] = useState<TimelineLog[]>([]);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Hydrate data from the user's browser (Local Storage) on first load
   useEffect(() => {
     if (!user) return; // Wait for Auth loading
@@ -92,7 +96,6 @@ export default function Home() {
         const sortedArray = Object.values(groupedLogs).sort((a, b) => a.time.localeCompare(b.time));
         setTimelineLogs(sortedArray);
       }
-      setIsMounted(true);
     };
 
     fetchSupabaseData();
