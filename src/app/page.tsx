@@ -320,9 +320,28 @@ export default function Home() {
     setSelectedTag(task.tagId);
   };
 
-  const handleDeleteTask = (id: string, e: React.MouseEvent) => {
+  const handleDeleteTask = async (taskToDel: RecentTask, e: React.MouseEvent) => {
     e.stopPropagation();
-    setRecentTasks(prev => prev.filter(t => t.id !== id));
+    
+    // Remove from local list
+    setRecentTasks(prev => prev.filter(t => t.id !== taskToDel.id));
+    
+    // Deduct duration to reflect instantly on the UI Header
+    if (taskToDel.duration > 0) {
+      setDailyTotal(prev => Math.max(0, prev - taskToDel.duration));
+    }
+
+    // Delete permanently from Supabase
+    if (user) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      await supabase.from('daily_tasks').delete()
+        .match({
+           user_id: user.id,
+           date: todayStr,
+           name: taskToDel.name,
+           tag_id: taskToDel.tagId
+        });
+    }
   };
 
   const handleMoveTask = (id: string, direction: 'up' | 'down', e: React.MouseEvent) => {
@@ -565,7 +584,7 @@ export default function Home() {
                               </button>
                               <div className="w-px h-4 bg-gray-800 mx-1"></div>
                               <button 
-                                onClick={(e) => handleDeleteTask(task.id, e)}
+                                onClick={(e) => handleDeleteTask(task, e)}
                                 className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                                 title="Excluir"
                               >
