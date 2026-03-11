@@ -25,10 +25,15 @@ interface TimelineLog {
   [tagId: string]: string | number; // minutes per tag
 }
 
+interface WeeklyLog {
+  date: string; // "DD/MM"
+  [tagId: string]: string | number; // hours per tag
+}
+
 export default function Home() {
   const { user, loading: authLoading, signOut } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'timer' | 'dashboard'>('timer');
+  const [activeTab, setActiveTab] = useState<'timer' | 'dashboard' | 'historico'>('timer');
   const [taskName, setTaskName] = useState("");
   const [selectedTag, setSelectedTag] = useState(TAGS[0].id);
   const [activeTimer, setActiveTimer] = useState<string>('fluxo');
@@ -39,6 +44,7 @@ export default function Home() {
   const [timeInSeconds, setTimeInSeconds] = useState(0);
   const [dailyTotal, setDailyTotal] = useState(0);
   const [timelineLogs, setTimelineLogs] = useState<TimelineLog[]>([]);
+  const [weeklyHistory, setWeeklyHistory] = useState<WeeklyLog[]>([]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -95,6 +101,39 @@ export default function Home() {
 
         const sortedArray = Object.values(groupedLogs).sort((a, b) => a.time.localeCompare(b.time));
         setTimelineLogs(sortedArray);
+      }
+
+      // 3. Fetch Weekly History
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      const sevenDaysAgo = d.toISOString().split('T')[0];
+      
+      const { data: weeklyData, error: weeklyErr } = await supabase
+        .from('daily_tasks')
+        .select('date, tag_id, duration')
+        .eq('user_id', user.id)
+        .gte('date', sevenDaysAgo)
+        .order('date', { ascending: true });
+
+      if (!weeklyErr && weeklyData) {
+        const groupedWeekly: Record<string, WeeklyLog> = {};
+        weeklyData.forEach(row => {
+          const [year, month, day] = row.date.split('-');
+          const dateKey = `${day}/${month}`;
+          if (!groupedWeekly[dateKey]) {
+            groupedWeekly[dateKey] = { date: dateKey };
+            TAGS.forEach(t => groupedWeekly[dateKey][t.id] = 0);
+          }
+          groupedWeekly[dateKey][row.tag_id] = (groupedWeekly[dateKey][row.tag_id] as number) + Number((row.duration / 3600));
+        });
+        setWeeklyHistory(Object.values(groupedWeekly).map(item => {
+           // @ts-ignore dynamic type builder
+           const formattedItem: any = { date: item.date };
+           TAGS.forEach(t => {
+              formattedItem[t.label] = Number((item[t.id] as number).toFixed(2));
+           });
+           return formattedItem;
+        }));
       }
     };
 
@@ -324,7 +363,13 @@ export default function Home() {
              onClick={() => setActiveTab('dashboard')}
              className={`px-6 py-2 rounded-xl text-xs font-semibold transition-all ${activeTab === 'dashboard' ? 'bg-[#1e1e24] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
            >
-             Dashboard
+             Hoje
+           </button>
+           <button 
+             onClick={() => setActiveTab('historico')}
+             className={`px-6 py-2 rounded-xl text-xs font-semibold transition-all ${activeTab === 'historico' ? 'bg-[#1e1e24] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+           >
+             Histórico
            </button>
         </div>
         <button 
@@ -497,7 +542,7 @@ export default function Home() {
             )}
           </main>
         </>
-      ) : (
+      ) : activeTab === 'dashboard' ? (
         /* Dashboard View */
         <main className="w-full max-w-md flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
            {/* Dash Header */}
@@ -598,6 +643,41 @@ export default function Home() {
                 </div>
               </div>
             )}
+          </div>
+        </main>
+      ) : (
+        /* Histórico View */
+        <main className="w-full max-w-md flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
+          <header className="w-full mb-10 mt-2 flex flex-col items-center">
+             <h1 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.25em] mb-4">Progresso Semanal</h1>
+             <p className="text-3xl font-light text-white flex items-baseline gap-2 tabular-nums">
+               Últimos 7 dias
+             </p>
+          </header>
+
+          <div className="w-full p-6 pb-2 rounded-[2rem] bg-[#121216]/80 border border-white/[0.04] backdrop-blur-xl shadow-2xl flex flex-col items-center">
+             <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-6 w-full text-left">Horas por Dia</h3>
+             {weeklyHistory.length > 0 ? (
+               <div className="w-full h-64">
+                 <ResponsiveContainer width="100%" height="100%">
+                   <BarChart data={weeklyHistory} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                     <XAxis dataKey="date" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
+                     <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}h`} />
+                     <Tooltip 
+                        cursor={{fill: '#1a1a20'}}
+                        contentStyle={{ backgroundColor: '#1a1a20', borderColor: '#27272a', borderRadius: '1rem', color: '#fff', fontSize: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                        formatter={(value: any, name: any) => [`${value}h`, name]}
+                     />
+                     <Bar dataKey="Trabalho" stackId="a" fill={TAGS[0].hex} radius={[0, 0, 4, 4]} maxBarSize={40} />
+                     <Bar dataKey="Faculdade" stackId="a" fill={TAGS[1].hex} maxBarSize={40} />
+                     <Bar dataKey="Projetos" stackId="a" fill={TAGS[2].hex} maxBarSize={40} />
+                     <Bar dataKey="Lazer" stackId="a" fill={TAGS[3].hex} radius={[4, 4, 0, 0]} maxBarSize={40} />
+                   </BarChart>
+                 </ResponsiveContainer>
+               </div>
+             ) : (
+               <div className="text-sm text-gray-500 py-10">Buscando dados da semana...</div>
+             )}
           </div>
         </main>
       )}
